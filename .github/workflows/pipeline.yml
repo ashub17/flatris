@@ -11,50 +11,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node (compat)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '10.x'
+          node-version: '14.21.3'
 
-      - name: Install Yarn classic
+      - name: Install Yarn (classic)
         run: npm i -g yarn@1.22.22
-
-      - name: Cache Yarn
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/yarn
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run tests (flow + lint + jest)
+      - name: Run tests
         run: yarn test
 
       - name: Build
         run: yarn build
 
-  cd_aws:
-    name: CD - Deploy to AWS (S3 + CloudFront)
+  cd_s3:
+    name: CD - Deploy to AWS S3
     needs: ci
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node (compat)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '10.x'
+          node-version: '14.21.3'
 
-      - name: Install Yarn classic
+      - name: Install Yarn (classic)
         run: npm i -g yarn@1.22.22
 
       - name: Install dependencies
@@ -70,11 +58,5 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Upload to S3
+      - name: Deploy to S3 (sync build/)
         run: aws s3 sync build s3://${{ secrets.S3_BUCKET }} --delete
-
-      - name: Invalidate CloudFront
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
